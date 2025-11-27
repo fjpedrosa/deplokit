@@ -1,6 +1,6 @@
 {
   "name": "@fjpedrosa/deploy-toolkit",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Deployment toolkit for Next.js + Bun monorepo projects with Docker",
   "type": "module",
   "main": "./src/index.ts",

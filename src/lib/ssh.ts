@@ -287,6 +287,7 @@ export function wrapWithBunPath(command: string): string {
 
 /**
  * Genera un package.json filtrado con solo los workspaces especificados
+ * También elimina devDependencies ya que no son necesarias en el servidor
  */
 export async function generateFilteredPackageJson(
   projectRoot: string,
@@ -295,9 +296,10 @@ export async function generateFilteredPackageJson(
   const packageJsonPath = `${projectRoot}/package.json`;
   const packageJson = JSON.parse(await Bun.file(packageJsonPath).text());
 
-  // Filter workspaces
+  // Filter workspaces and remove devDependencies for production deployment
+  const { devDependencies, ...restPackageJson } = packageJson;
   const filteredPackageJson = {
-    ...packageJson,
+    ...restPackageJson,
     workspaces: filter.include,
   };
 
@@ -310,6 +312,9 @@ export async function generateFilteredPackageJson(
   filter.include.forEach(ws => {
     printInfo(`     ✓ ${ws}`);
   });
+  if (devDependencies && Object.keys(devDependencies).length > 0) {
+    printInfo(`   Removed devDependencies: ${Object.keys(devDependencies).length}`);
+  }
 
   return {
     content: JSON.stringify(filteredPackageJson, null, 2),
