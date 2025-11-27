@@ -418,13 +418,13 @@ export async function checkServiceHealthEndpoints(
 export async function waitForContainers(
   options: HealthCheckOptions & { maxWaitTime?: number; config?: DeployConfig } = {}
 ): Promise<void> {
-  const { maxWaitTime = 60000, remote, config } = options;
-  const spinner = ora('Waiting for containers to be ready...').start();
+  const { maxWaitTime = 180000, remote, config } = options; // 3 minutes default
+  const spinner = ora('Waiting for containers to be healthy...').start();
 
   const startTime = Date.now();
-  let allReady = false;
+  let allHealthy = false;
 
-  while (Date.now() - startTime < maxWaitTime && !allReady) {
+  while (Date.now() - startTime < maxWaitTime && !allHealthy) {
     let containers: ContainerStatus[] = [];
 
     if (remote) {
@@ -462,29 +462,40 @@ export async function waitForContainers(
       continue;
     }
 
-    // Check if all are running
-    const runningCount = containers.filter(c => c.state === 'running').length;
+    // Check if containers are restarting (problem)
     const restartingCount = containers.filter(c => c.status.includes('Restarting')).length;
-
     if (restartingCount > 0) {
       spinner.text = `Waiting... (${restartingCount} container(s) restarting)`;
       await sleep(3000);
       continue;
     }
 
-    if (runningCount === containers.length) {
-      allReady = true;
+    // Check actual health status (not just running)
+    const healthChecks = await Promise.all(
+      containers.map(async (c) => {
+        const result = await checkContainerActualHealth(c.name, c.service, options);
+        return { container: c.name, healthy: result.healthy, message: result.message };
+      })
+    );
+
+    const healthyCount = healthChecks.filter(h => h.healthy).length;
+
+    if (healthyCount === containers.length) {
+      allHealthy = true;
       break;
     }
 
-    spinner.text = `Waiting... (${runningCount}/${containers.length} running)`;
-    await sleep(2000);
+    const unhealthyContainers = healthChecks.filter(h => !h.healthy);
+    const statusText = unhealthyContainers.map(h => `${h.container}: ${h.message}`).join(', ');
+    spinner.text = `Waiting... (${healthyCount}/${containers.length} healthy) - ${statusText}`;
+    await sleep(5000); // Check every 5 seconds
   }
 
-  if (allReady) {
-    spinner.succeed('All containers are ready');
+  if (allHealthy) {
+    spinner.succeed('All containers are healthy');
   } else {
-    spinner.warn('Timeout waiting for containers');
+    spinner.fail('Timeout waiting for containers to be healthy');
+    throw new Error('Deployment failed: containers not healthy within timeout');
   }
 }
 
@@ -499,8 +510,8 @@ export async function runHealthCheck(
   printInfo('🏥 Running health checks...');
   console.log('');
 
-  // Give services a moment to start
-  await sleep(2000);
+  // Give services time to fully initialize after rolling update
+  await sleep(5000);
 
   // Check service health endpoints (HTTP)
   const healthEndpointResults = await checkServiceHealthEndpoints(config, options);

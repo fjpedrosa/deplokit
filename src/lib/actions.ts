@@ -288,49 +288,29 @@ async function deployBackendRemote(
   // Sync shared folder
   await syncSharedFolder(paths.root, config.deployment.path, sshOptions);
 
-  printHeader('STEP 2: BUILD & START DOCKER STACK');
+  printHeader('STEP 2: BUILD DOCKER IMAGES');
 
-  // Check if containers exist on remote VPS
-  printInfo('Checking for existing containers...');
-  const checkResult = await executeRemoteCommand(
-    `cd ${config.deployment.path}/packages/backend && docker compose ps -q`,
-    sshOptions
-  );
-
-  const containerCount = checkResult.stdout.trim().split('\n').filter(line => line.length > 0).length;
-  printInfo(`Found ${containerCount} existing container(s)`);
-
-  // Pull images
-  printInfo('Pulling Docker images...');
+  // Build images first (without recreating containers)
+  printInfo('Building Docker images...');
   await executeRemoteCommand(
-    `cd ${config.deployment.path}/packages/backend && docker compose pull`,
+    `cd ${config.deployment.path}/packages/backend && docker compose build`,
     sshOptions
   );
 
-  // Up containers
-  const dockerCmd =
-    containerCount > 0
-      ? 'docker compose up -d --build --force-recreate'
-      : 'docker compose up -d --build';
+  printSuccess('Docker images built');
 
-  printInfo(`Executing: ${dockerCmd}`);
+  printHeader('STEP 3: ROLLING UPDATE WITH HEALTH CHECK');
+
+  // Use --wait flag to wait for containers to be healthy before returning
+  // This ensures zero-downtime by keeping old containers running until new ones are healthy
+  printInfo('Starting rolling update (waiting for healthy status)...');
 
   await executeRemoteCommand(
-    `cd ${config.deployment.path}/packages/backend && ${dockerCmd}`,
+    `cd ${config.deployment.path}/packages/backend && docker compose up -d --wait --wait-timeout 120`,
     sshOptions
   );
 
-  printSuccess('Docker stack updated');
-
-  printHeader('STEP 3: WAIT FOR CONTAINERS');
-
-  // Wait for containers
-  await waitForContainers({
-    remote: {
-      path: config.deployment.path,
-      ssh: sshOptions,
-    },
-  });
+  printSuccess('Rolling update complete - all services healthy');
 
   // Health check
   if (!options.skipHealthCheck) {
