@@ -36,9 +36,15 @@ bun run typecheck  # Alias para build
    git push
    ```
 
-4. **Esperar** a que GitHub Action complete la publicación (~1-2 min)
+4. **Crear y pushear tag** (esto dispara el workflow):
+   ```bash
+   git tag v1.0.X
+   git push origin v1.0.X
+   ```
 
-5. **Actualizar en proyectos** que usen el toolkit:
+5. **Esperar** a que GitHub Action complete la publicación (~1-2 min)
+
+6. **Actualizar en proyectos** que usen el toolkit:
    ```bash
    bun update @fjpedrosa/deploy-toolkit
    ```
