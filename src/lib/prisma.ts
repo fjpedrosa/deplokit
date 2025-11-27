@@ -239,7 +239,7 @@ export async function printMigrationInfo(options: PrismaOptions = {}): Promise<v
 
   if (pending.length > 0) {
     printWarning(`${pending.length} pending migration(s):`);
-    pending.forEach(m => console.log(colors.yellow(`  - ${m}`)));
+    pending.forEach(m => console.log(colors.warning(`  - ${m}`)));
   } else {
     printSuccess('All migrations applied - database is up to date');
   }

@@ -50,6 +50,7 @@ export interface ServiceConfig {
   enabled: boolean;
   dockerName?: string;
   healthEndpoint?: string;
+  port?: number;
 }
 
 /**
@@ -325,6 +326,22 @@ export function getDockerComposeServiceName(config: DeployConfig, serviceName: s
   const kebabServiceName = normalized.replace(/_/g, '-');
 
   return `${projectName}-${kebabServiceName}`;
+}
+
+/**
+ * Obtiene la configuración completa de un servicio
+ */
+export function getServiceConfig(config: DeployConfig, serviceName: string): ServiceConfig | null {
+  const normalized = normalizeServiceName(serviceName);
+  const service = config.services[normalized];
+
+  if (!service) return null;
+
+  if (typeof service === 'boolean') {
+    return { enabled: service };
+  }
+
+  return service;
 }
 
 /**

@@ -3,7 +3,7 @@ import ora from 'ora';
 import { printError, printSuccess, printInfo, printWarning, colors, printTable, sleep } from './utils';
 import { getContainerStatus, getContainerLogs, type ContainerStatus } from './docker';
 import type { DeployConfig } from './config';
-import { getDockerComposeServiceName, getActiveServices } from './config';
+import { getDockerComposeServiceName, getActiveServices, getServiceConfig } from './config';
 import { executeRemoteCommand, type SSHOptions } from './ssh';
 
 /**
@@ -343,6 +343,76 @@ export async function checkAPIEndpoints(
 }
 
 /**
+ * Verifica los health endpoints HTTP de los servicios configurados
+ */
+export async function checkServiceHealthEndpoints(
+  config: DeployConfig,
+  options: HealthCheckOptions = {}
+): Promise<HealthCheckResult[]> {
+  const { remote } = options;
+  const results: HealthCheckResult[] = [];
+  const activeServices = getActiveServices(config);
+
+  printInfo('Checking service health endpoints...');
+  console.log('');
+
+  for (const serviceName of activeServices) {
+    const serviceConfig = getServiceConfig(config, serviceName);
+
+    if (!serviceConfig?.healthEndpoint || !serviceConfig?.port) {
+      // No health endpoint or port configured, skip HTTP check
+      continue;
+    }
+
+    const { port, healthEndpoint } = serviceConfig;
+
+    if (remote) {
+      // For remote, check via SSH curl
+      const command = `curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://localhost:${port}${healthEndpoint} 2>/dev/null || echo '000'`;
+
+      try {
+        const result = await executeRemoteCommand(command, remote.ssh);
+        const statusCode = parseInt(result.stdout.trim(), 10);
+
+        if (statusCode === 200) {
+          results.push({
+            service: serviceName,
+            healthy: true,
+            message: `HTTP ${statusCode}`,
+            details: `localhost:${port}${healthEndpoint}`,
+          });
+        } else {
+          results.push({
+            service: serviceName,
+            healthy: false,
+            message: statusCode === 0 ? 'Connection refused' : `HTTP ${statusCode}`,
+            details: `localhost:${port}${healthEndpoint}`,
+          });
+        }
+      } catch (error: any) {
+        results.push({
+          service: serviceName,
+          healthy: false,
+          message: 'Failed to check',
+          details: error.message,
+        });
+      }
+    } else {
+      // Local check
+      const url = `http://localhost:${port}${healthEndpoint}`;
+      const result = await checkHTTPEndpoint(url, 200, 5000);
+      results.push({
+        ...result,
+        service: serviceName,
+        details: `localhost:${port}${healthEndpoint}`,
+      });
+    }
+  }
+
+  return results;
+}
+
+/**
  * Espera a que los contenedores esten listos
  */
 export async function waitForContainers(
@@ -426,25 +496,25 @@ export async function runHealthCheck(
   options: HealthCheckOptions = {}
 ): Promise<boolean> {
   console.log('');
-  printInfo('Running health checks...');
+  printInfo('🏥 Running health checks...');
   console.log('');
 
-  // Wait for containers
-  await waitForContainers({ ...options, config });
+  // Give services a moment to start
+  await sleep(2000);
 
-  // Check backend services
-  const backendResults = await checkBackendServices(config, options);
+  // Check service health endpoints (HTTP)
+  const healthEndpointResults = await checkServiceHealthEndpoints(config, options);
 
   // Print results
-  if (backendResults.length > 0) {
+  if (healthEndpointResults.length > 0) {
     console.log('');
     printInfo('Service Health Status:');
     console.log('');
 
     const headers = ['Service', 'Status', 'Message', 'Details'];
-    const rows = backendResults.map(r => [
+    const rows = healthEndpointResults.map(r => [
       r.service,
-      r.healthy ? colors.success('Healthy') : colors.error('Unhealthy'),
+      r.healthy ? colors.success('✓ Healthy') : colors.error('✗ Unhealthy'),
       r.message,
       r.details || '-',
     ]);
@@ -453,17 +523,17 @@ export async function runHealthCheck(
   }
 
   // Check if all healthy
-  const allHealthy = backendResults.every(r => r.healthy);
+  const allHealthy = healthEndpointResults.every(r => r.healthy);
 
   console.log('');
 
   if (allHealthy) {
-    printSuccess('All services are healthy');
+    printSuccess('All services are healthy ✓');
     return true;
   } else {
-    const unhealthyCount = backendResults.filter(r => !r.healthy).length;
+    const unhealthyCount = healthEndpointResults.filter(r => !r.healthy).length;
     printError(`${unhealthyCount} service(s) are unhealthy`);
-    printWarning('Check logs for details: deploy status');
+    printWarning('Check logs for details: deploy-toolkit status');
     return false;
   }
 }
