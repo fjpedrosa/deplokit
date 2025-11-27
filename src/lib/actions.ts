@@ -51,7 +51,7 @@ function getWorkspaceFilters(config: DeployConfig): {
 
   const backendPath = paths.backend || 'packages/backend';
   const frontendPath = paths.frontend || 'packages/frontend';
-  const sharedPath = paths.shared || 'packages/shared';
+  const sharedPath = (paths.shared || 'packages/shared') + '/*';
 
   // Para backend, incluir API y todos los workers activos
   const backendWorkspaces = [`${backendPath}/api`, sharedPath];
