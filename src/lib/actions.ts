@@ -513,7 +513,7 @@ async function deployServiceRemote(
   printInfo(`Redeploying service: ${serviceName} (docker: ${dockerServiceName})`);
 
   await executeRemoteCommand(
-    `cd ${config.deployment.path}/packages/backend && docker compose up -d --no-deps --build ${dockerServiceName}`,
+    `cd ${config.deployment.path}/packages/backend && docker compose up -d --no-deps --build --wait --wait-timeout 120 ${dockerServiceName}`,
     sshOptions
   );
 
