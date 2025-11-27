@@ -1,0 +1,47 @@
+{
+  "project": {
+    "name": "my-project",
+    "domain": "example.com"
+  },
+  "deployment": {
+    "type": "remote",
+    "path": "/opt/apps/my-project",
+    "vps_ip": "123.45.67.89",
+    "ssh_user": "deploy",
+    "ssh_key": "~/.ssh/my_project_deploy"
+  },
+  "database": {
+    "type": "postgresql",
+    "host": "localhost",
+    "port": 5432,
+    "name": "my_project_db",
+    "user": "my_project_user"
+  },
+  "services": {
+    "api": true,
+    "pdf_worker": {
+      "enabled": true,
+      "dockerName": "my-project-pdf-worker"
+    },
+    "image_worker": {
+      "enabled": true,
+      "dockerName": "my-project-image-worker"
+    },
+    "email_worker": {
+      "enabled": false,
+      "dockerName": "my-project-email-worker"
+    }
+  },
+  "paths": {
+    "frontend": "packages/frontend",
+    "backend": "packages/backend",
+    "shared": "packages/shared",
+    "prisma": "packages/shared/database/prisma",
+    "dockerCompose": "packages/backend/docker-compose.yml"
+  },
+  "secrets": {
+    "db_password": "",
+    "redis_password": "",
+    "jwt_secret": ""
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "name": "@fjpedrosa/deploy-toolkit",
+  "version": "1.0.0",
+  "description": "Deployment toolkit for Next.js + Bun monorepo projects with Docker",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "bin": {
+    "deploy": "./bin/deploy.js",
+    "deploy-toolkit": "./bin/deploy.js"
+  },
+  "files": [
+    "src",
+    "bin",
+    "templates"
+  ],
+  "scripts": {
+    "deploy": "bun run src/cli.ts",
+    "deploy:all": "bun run src/cli.ts all",
+    "deploy:backend": "bun run src/cli.ts backend",
+    "deploy:frontend": "bun run src/cli.ts frontend",
+    "deploy:migrations": "bun run src/cli.ts migrations",
+    "health": "bun run src/cli.ts health-check",
+    "status": "bun run src/cli.ts status",
+    "history": "bun run src/cli.ts history",
+    "rollback": "bun run src/cli.ts rollback",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "deploy",
+    "docker",
+    "vps",
+    "ssh",
+    "nextjs",
+    "bun",
+    "monorepo",
+    "prisma"
+  ],
+  "author": "fjpedrosa",
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^5.0.0",
+    "commander": "^12.0.0",
+    "date-fns": "^3.0.0",
+    "execa": "^8.0.0",
+    "inquirer": "^9.0.0",
+    "ora": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^9.0.0",
+    "@types/node": "^20.0.0",
+    "bun-types": "latest",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "bun": ">=1.0.0"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fjpedrosa/deploy-toolkit.git"
+  }
+}
