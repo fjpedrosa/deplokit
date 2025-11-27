@@ -519,14 +519,8 @@ async function deployServiceRemote(
 
   printSuccess(`Service '${serviceName}' deployed`);
 
-  // Wait and health check
-  await waitForContainers({
-    remote: {
-      path: config.deployment.path,
-      ssh: sshOptions,
-    },
-  });
-
+  // Note: --wait flag ensures the container is healthy before returning
+  // so we skip waitForContainers() and only run HTTP health check
   if (!options.skipHealthCheck) {
     await runHealthCheck(config, {
       remote: {
