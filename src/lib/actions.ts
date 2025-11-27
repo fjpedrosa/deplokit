@@ -53,8 +53,8 @@ function getWorkspaceFilters(config: DeployConfig): {
   const frontendPath = paths.frontend || 'packages/frontend';
   const sharedPath = (paths.shared || 'packages/shared') + '/*';
 
-  // Para backend, incluir API y todos los workers activos
-  const backendWorkspaces = [`${backendPath}/api`, sharedPath];
+  // Para backend, incluir API, backend-shared y todos los workers activos
+  const backendWorkspaces = [`${backendPath}/api`, `${backendPath}/shared`, sharedPath];
 
   // Agregar workers activos como workspaces
   const activeServices = getActiveServices(config);
