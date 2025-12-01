@@ -153,3 +153,17 @@ export {
 
 // Menu
 export { showInteractiveMenu } from './lib/menu';
+
+// Version tracking
+export {
+  writeDeployedVersion,
+  getDeployedVersion,
+  printDeployedVersion,
+  getCurrentCommitMessage,
+  getCurrentUser,
+  type DeployedVersionInfo,
+  type WriteVersionOptions,
+} from './lib/version';
+
+// Dashboard server
+export { startDashboard, type DashboardOptions } from './lib/server/index';

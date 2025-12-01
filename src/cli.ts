@@ -247,6 +247,70 @@ program
     }
   });
 
+// Comando: deploy dashboard
+program
+  .command('dashboard')
+  .description('Start the web dashboard for deployment management')
+  .option('-p, --port <port>', 'Port to run dashboard on', '4200')
+  .option('--no-open', 'Do not automatically open browser')
+  .action(async (options) => {
+    try {
+      const { startDashboard } = await import('./lib/server/index');
+
+      printHeader('DEPLOY DASHBOARD');
+
+      await startDashboard({
+        port: parseInt(options.port),
+        open: options.open !== false,
+      });
+    } catch (error) {
+      console.error(`Failed to start dashboard: ${error}`);
+      process.exit(1);
+    }
+  });
+
+// Comando: deploy version
+program
+  .command('version')
+  .description('Show currently deployed version on VPS')
+  .option('-e, --env <environment>', 'Environment: dev|stage|prod', 'production')
+  .option('--json', 'Output as JSON')
+  .action(async (options) => {
+    try {
+      const config = loadDeployConfig();
+      const sshConfig = getSSHConfig(config);
+
+      if (!sshConfig || config.deployment.type !== 'remote') {
+        printInfo('Version tracking is only available for remote deployments');
+        printInfo('For local deployments, check deployment history with: deploy history');
+        process.exit(0);
+      }
+
+      const { getDeployedVersion, printDeployedVersion } = await import('./lib/version');
+
+      printInfo('Fetching deployed version from VPS...');
+
+      const version = await getDeployedVersion(config.deployment.path, {
+        target: sshConfig.target,
+        sshKey: config.deployment.ssh_key,
+      });
+
+      if (version) {
+        if (options.json) {
+          console.log(JSON.stringify(version, null, 2));
+        } else {
+          printDeployedVersion(version);
+        }
+      } else {
+        printInfo('No deployed version found on VPS');
+        printInfo('Deploy first to create version tracking file');
+      }
+    } catch (error) {
+      console.error(`Failed to get deployed version: ${error}`);
+      process.exit(1);
+    }
+  });
+
 /**
  * Normaliza el nombre del entorno
  */

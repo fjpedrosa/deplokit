@@ -1,26 +1,30 @@
 {
   "name": "@fjpedrosa/deploy-toolkit",
-  "version": "1.0.10",
+  "version": "1.1.0",
   "description": "Deployment toolkit for Next.js + Bun monorepo projects with Docker",
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "bin": {
-    "deploy": "./bin/deploy.js",
-    "deploy-toolkit": "./bin/deploy.js"
+    "deplokit": "./bin/deploy.js"
   },
   "files": [
     "src",
     "bin",
-    "templates"
+    "templates",
+    "dist/dashboard"
   ],
   "scripts": {
     "build": "tsc --noEmit",
+    "build:dashboard": "cd dashboard && bun install && bun run build",
+    "prepublishOnly": "bun run build:dashboard",
     "deploy": "bun run src/cli.ts",
     "deploy:all": "bun run src/cli.ts all",
     "deploy:backend": "bun run src/cli.ts backend",
     "deploy:frontend": "bun run src/cli.ts frontend",
     "deploy:migrations": "bun run src/cli.ts migrations",
+    "dashboard": "bun run src/cli.ts dashboard",
+    "version:check": "bun run src/cli.ts version",
     "health": "bun run src/cli.ts health-check",
     "status": "bun run src/cli.ts status",
     "history": "bun run src/cli.ts history",

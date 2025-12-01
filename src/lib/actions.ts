@@ -36,6 +36,12 @@ import {
   getCurrentCommitHash,
   type DeploymentType,
 } from './history';
+import {
+  writeDeployedVersion,
+  getCurrentCommitMessage,
+  getCurrentUser,
+  type DeployedVersionInfo,
+} from './version';
 
 /**
  * Genera workspace filters dinamicamente basado en la configuracion
@@ -226,6 +232,22 @@ export async function deployBackend(options: DeployOptions = {}): Promise<void> 
 
     if (config.deployment.type === 'remote') {
       await deployBackendRemote(config, paths, options);
+
+      // Write version file to VPS after successful remote deploy
+      const sshConfig = getSSHConfig(config);
+      if (sshConfig) {
+        await writeVersionFile(config, {
+          environment,
+          deploymentType: 'backend',
+          deploymentId,
+          commitHash,
+          startTime,
+          sshOptions: {
+            target: sshConfig.target,
+            sshKey: config.deployment.ssh_key,
+          },
+        });
+      }
     } else {
       await deployBackendLocal(config, paths, options);
     }
@@ -322,6 +344,50 @@ async function deployBackendRemote(
         ssh: sshOptions,
       },
     });
+  }
+}
+
+/**
+ * Write deployed version file to VPS
+ */
+async function writeVersionFile(
+  config: DeployConfig,
+  options: {
+    environment: Environment;
+    deploymentType: DeploymentType;
+    deploymentId?: number;
+    commitHash?: string;
+    startTime: Date;
+    sshOptions: { target: string; sshKey?: string };
+  }
+): Promise<void> {
+  try {
+    const commitMessage = await getCurrentCommitMessage();
+    const activeServices = getActiveServices(config);
+    const duration = Math.floor((new Date().getTime() - options.startTime.getTime()) / 1000);
+
+    const versionInfo: DeployedVersionInfo = {
+      commitHash: options.commitHash || 'unknown',
+      commitMessage,
+      timestamp: new Date().toISOString(),
+      environment: options.environment,
+      services: activeServices,
+      deploymentType: options.deploymentType,
+      deploymentId: options.deploymentId,
+      duration,
+      user: getCurrentUser(),
+    };
+
+    await writeDeployedVersion({
+      remotePath: config.deployment.path,
+      ssh: options.sshOptions,
+      info: versionInfo,
+    });
+
+    printSuccess('Deployed version file updated on VPS');
+  } catch (error) {
+    printWarning(`Failed to write version file: ${error}`);
+    // Non-fatal - don't fail the deploy
   }
 }
 
@@ -447,6 +513,22 @@ export async function deployService(
 
     if (config.deployment.type === 'remote') {
       await deployServiceRemote(normalizedService, config, paths, options);
+
+      // Write version file to VPS after successful remote deploy
+      const sshConfig = getSSHConfig(config);
+      if (sshConfig) {
+        await writeVersionFile(config, {
+          environment,
+          deploymentType: 'service',
+          deploymentId,
+          commitHash,
+          startTime,
+          sshOptions: {
+            target: sshConfig.target,
+            sshKey: config.deployment.ssh_key,
+          },
+        });
+      }
     } else {
       await deployServiceLocal(normalizedService, config, paths, options);
     }
