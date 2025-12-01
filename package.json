@@ -67,6 +67,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/fjpedrosa/deploy-toolkit.git"
+    "url": "git+https://github.com/fjpedrosa/deplokit.git"
   }
 }
