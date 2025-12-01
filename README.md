@@ -1,131 +1,254 @@
-# @fjpedrosa/deploy-toolkit
+# deplokit
 
-Universal deployment toolkit for monorepo projects with Docker, SSH, and Prisma support.
+> Zero-downtime Docker Compose deployments via CLI
+
+[![npm version](https://img.shields.io/npm/v/@fjpedrosa/deploy-toolkit.svg)](https://www.npmjs.com/package/@fjpedrosa/deploy-toolkit)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
+
+## What is Deplokit?
+
+Deplokit is a CLI tool that simplifies deploying Docker Compose projects to local environments or remote VPS servers. It handles the entire deployment pipeline: syncing files via rsync, building Docker images, running database migrations, and verifying service health.
+
+Whether you're deploying a single API service or a complete monorepo stack with multiple workers, Deplokit manages it all through a simple configuration file. It provides zero-downtime deployments by leveraging Docker Compose health checks, keeping old containers running until new ones are verified healthy.
+
+**Key benefits:**
+- Deploy with a single command instead of complex shell scripts
+- Zero-downtime rolling updates with automatic health verification
+- Track deployment history and rollback when needed
+- Visual web dashboard for deployment management
+- Works with any Docker Compose project (single apps or monorepos)
 
 ## Features
 
-- **Dynamic Service Configuration**: Define services in `deploy-config.json` and deploy any of them
-- **Local & Remote Deployments**: Deploy locally with Docker Compose or remotely via SSH/rsync
-- **Prisma Migrations**: Run database migrations as part of the deployment process
-- **Health Checks**: Verify service health after deployment
-- **Deployment History**: Track all deployments with SQLite-based history
-- **Interactive Menu**: Use the interactive CLI menu for easy deployment management
-- **Workspace Filtering**: Deploy only the necessary workspaces for faster sync
+- **Zero-downtime deployments** - Rolling updates with `docker compose --wait`
+- **Local & Remote support** - Deploy locally or to any VPS via SSH/rsync
+- **Docker Compose integration** - Leverages your existing docker-compose.yml
+- **Prisma migrations** - Automatically run database migrations
+- **Health checks** - Verify services via Docker health status and HTTP endpoints
+- **Deployment history** - SQLite-based tracking with rollback support
+- **Web dashboard** - Visual interface for deployment management
+- **Interactive CLI** - Menu-driven interface when no arguments provided
+- **Monorepo support** - Workspace filtering for efficient syncs
 
 ## Installation
 
 ```bash
-# Using bun (recommended)
-bun add -d @fjpedrosa/deploy-toolkit
+# Global install (recommended)
+npm install -g @fjpedrosa/deploy-toolkit
 
-# Using npm with GitHub Packages
-npm install @fjpedrosa/deploy-toolkit --registry=https://npm.pkg.github.com
+# Or with bun
+bun add -g @fjpedrosa/deploy-toolkit
+
+# Or as a dev dependency in your project
+npm install -D @fjpedrosa/deploy-toolkit
 ```
 
-### Configure npm for GitHub Packages
+## Quick Start
 
-Create or update your `~/.npmrc`:
+### 1. Create configuration file
 
-```
-@fjpedrosa:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=YOUR_GITHUB_TOKEN
-```
+Create a `deploy-config.json` in your project root.
 
-## Setup
-
-1. Create a `deploy-config.json` in your project root:
+**Simple project:**
 
 ```json
 {
   "project": {
-    "name": "my-project",
-    "domain": "example.com"
+    "name": "my-api",
+    "domain": "api.example.com"
   },
   "deployment": {
     "type": "remote",
-    "path": "/opt/apps/my-project",
+    "path": "/opt/apps/my-api",
     "vps_ip": "123.45.67.89",
     "ssh_user": "deploy"
   },
   "services": {
-    "api": true,
-    "pdf_worker": true,
-    "email_worker": false
+    "api": true
+  },
+  "paths": {
+    "backend": ".",
+    "dockerCompose": "./docker-compose.yml"
   }
 }
 ```
 
-See `templates/deploy-config.example.json` for a complete example.
-
-2. Add scripts to your `package.json`:
+**Monorepo:**
 
 ```json
 {
-  "scripts": {
-    "deploy": "deploy",
-    "deploy:backend": "deploy backend",
-    "deploy:api": "deploy service api",
-    "deploy:status": "deploy status",
-    "deploy:health": "deploy health-check"
+  "project": {
+    "name": "my-app",
+    "domain": "myapp.com"
+  },
+  "deployment": {
+    "type": "remote",
+    "path": "/opt/apps/my-app",
+    "vps_ip": "123.45.67.89",
+    "ssh_user": "deploy",
+    "ssh_key": "~/.ssh/deploy_key"
+  },
+  "services": {
+    "api": true,
+    "pdf_worker": {
+      "enabled": true,
+      "dockerName": "my-app-pdf-worker",
+      "healthEndpoint": "/health"
+    },
+    "email_worker": false
+  },
+  "paths": {
+    "frontend": "packages/frontend",
+    "backend": "packages/backend",
+    "shared": "packages/shared",
+    "prisma": "packages/shared/prisma",
+    "dockerCompose": "packages/backend/docker-compose.yml"
   }
 }
 ```
 
-## Usage
-
-### CLI Commands
+### 2. Deploy
 
 ```bash
-# Interactive menu (no arguments)
-bun run deploy
+# Interactive menu
+deplokit
 
-# Deploy all (backend + frontend)
-bun run deploy all
+# Or deploy everything
+deplokit all
 
-# Deploy backend only
-bun run deploy backend
-
-# Deploy a specific service
-bun run deploy service api
-bun run deploy service pdf-worker
-
-# Run migrations only
-bun run deploy migrations
-
-# Health check
-bun run deploy health-check
-
-# Show container status
-bun run deploy status
-
-# View deployment history
-bun run deploy history
-
-# View statistics
-bun run deploy stats
-
-# List available services
-bun run deploy services
+# Or deploy specific components
+deplokit backend
+deplokit service api
 ```
 
-### Options
+## CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `deplokit` | Interactive menu |
+| `deplokit all` | Full deploy (backend + frontend) |
+| `deplokit backend` | Deploy backend services |
+| `deplokit frontend` | Deploy frontend only |
+| `deplokit service <name>` | Deploy a specific service |
+| `deplokit migrations` | Run Prisma migrations only |
+| `deplokit status` | Show container status |
+| `deplokit health` | Run health checks |
+| `deplokit history` | View deployment history |
+| `deplokit stats` | Show deployment statistics |
+| `deplokit rollback` | Rollback to previous deployment |
+| `deplokit dashboard` | Start web dashboard |
+| `deplokit version` | Show deployed version on VPS |
+| `deplokit services` | List available services |
+
+## Command Options
 
 ```bash
 # Specify environment
-bun run deploy backend --env production
-bun run deploy backend -e stage
+deplokit backend --env production
+deplokit backend -e stage
 
-# Skip validations
-bun run deploy backend --skip-validations
+# Skip steps
+deplokit all --skip-migrations
+deplokit service api --skip-health-check
+deplokit backend --skip-validations
 
-# Skip health check
-bun run deploy service api --skip-health-check
+# Dashboard options
+deplokit dashboard --port 4200
+deplokit dashboard --no-open
 
-# Skip migrations
-bun run deploy all --skip-migrations
+# History options
+deplokit history --limit 20
+deplokit history --env production
+
+# Rollback options
+deplokit rollback --steps 2
 ```
 
-### Programmatic Usage
+## Configuration
+
+### Project
+
+```json
+{
+  "project": {
+    "name": "my-app",
+    "domain": "myapp.com"
+  }
+}
+```
+
+### Deployment
+
+**Remote deployment (VPS):**
+```json
+{
+  "deployment": {
+    "type": "remote",
+    "path": "/opt/apps/my-app",
+    "vps_ip": "123.45.67.89",
+    "ssh_user": "deploy",
+    "ssh_key": "~/.ssh/deploy_key"
+  }
+}
+```
+
+**Local deployment:**
+```json
+{
+  "deployment": {
+    "type": "local",
+    "path": "."
+  }
+}
+```
+
+### Services
+
+Services can be defined as boolean or object:
+
+```json
+{
+  "services": {
+    "api": true,
+    "worker": {
+      "enabled": true,
+      "dockerName": "custom-docker-name",
+      "healthEndpoint": "/health"
+    },
+    "disabled_service": false
+  }
+}
+```
+
+### Paths
+
+Customize paths for your project structure:
+
+```json
+{
+  "paths": {
+    "frontend": "packages/frontend",
+    "backend": "packages/backend",
+    "shared": "packages/shared",
+    "prisma": "packages/shared/prisma",
+    "dockerCompose": "packages/backend/docker-compose.yml"
+  }
+}
+```
+
+For single-folder projects, use:
+
+```json
+{
+  "paths": {
+    "backend": ".",
+    "dockerCompose": "./docker-compose.yml"
+  }
+}
+```
+
+## Programmatic Usage
 
 ```typescript
 import {
@@ -148,78 +271,21 @@ const config = loadDeployConfig();
 await runHealthCheck(config);
 ```
 
-## Configuration
-
-### Services
-
-Services can be defined as boolean or object:
-
-```json
-{
-  "services": {
-    "api": true,
-    "pdf_worker": {
-      "enabled": true,
-      "dockerName": "custom-docker-service-name",
-      "healthEndpoint": "/health"
-    }
-  }
-}
-```
-
-### Paths
-
-Customize paths for your monorepo structure:
-
-```json
-{
-  "paths": {
-    "frontend": "packages/frontend",
-    "backend": "packages/backend",
-    "shared": "packages/shared",
-    "prisma": "packages/shared/database/prisma",
-    "dockerCompose": "packages/backend/docker-compose.yml"
-  }
-}
-```
-
-### Remote Deployment
-
-For remote deployments via SSH:
-
-```json
-{
-  "deployment": {
-    "type": "remote",
-    "path": "/opt/apps/my-project",
-    "vps_ip": "123.45.67.89",
-    "ssh_user": "deploy",
-    "ssh_key": "~/.ssh/deploy_key"
-  }
-}
-```
-
-### Local Deployment
-
-For local Docker Compose deployments:
-
-```json
-{
-  "deployment": {
-    "type": "local",
-    "path": "."
-  }
-}
-```
-
 ## Requirements
 
-- Bun 1.0+
-- Docker & Docker Compose
-- SSH access (for remote deployments)
-- Git (for commit tracking)
+- **Runtime**: Node.js 18+ or Bun 1.0+
+- **Docker**: Docker Engine + Docker Compose v2
+- **SSH**: SSH access to VPS (for remote deployments)
+- **Git**: For commit tracking in deployment history
+
+## Documentation
+
+Full documentation coming soon at [deplokit.dev](https://deplokit.dev)
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit issues and pull requests.
 
 ## License
 
 MIT
-# deplokit
